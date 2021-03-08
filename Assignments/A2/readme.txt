@@ -1,20 +1,23 @@
-Hello there! 
+Ryan's readme.txt
 
-This is my assinment 2 submission.
+OK so to run this is pretty easy. 
 
-My info:
-	Name:	Ryan Barclay
-	V#:	V00842513
-	Class:	CSC361
+So you've done step 1, which is unzipping the file. Good Job!
 
+Step 2, make sure all files unzipped are in the same directory.
 
-Files in this submission:
-	TODO
+Step 3, go to that directory.
 
+Ok now type:
+python3 a2.py <cap_file> 
 
-How to run:
-	TODO
+and if you want to export to txt using piping with 
+python3 a2.py <cap_file>  > <text_output_file> 
 
-Notes:
-	TODO
+NOTE: Please use basic_structures.py included with zip, as it was heavily edited.
 
+Please have mercy on my soul,
+
+Ryan 
+
+V00842513
