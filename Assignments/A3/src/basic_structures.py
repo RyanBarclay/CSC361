@@ -1,5 +1,4 @@
 import struct
-from extra_functions import *
 
 SWAPPED_VALUE = 0xD4C3B2A1
 IDENTICAL_VALUE = 0xA1B2C3D4
@@ -7,6 +6,24 @@ IDENTICAL_VALUE = 0xA1B2C3D4
 SIZE_OF_GLOBAL_HEADER = 24
 SIZE_OF_PACKET_HEADER = 16
 SIZE_OF_ETHERNET_HEADER = 14
+
+
+def getNextBytes(binary, bytes):
+    """
+    This Function gets the next n bytes of data from a raw binary file and
+    returns both the n bytes and the original binary minus the n bytes
+
+    Args:
+        binary (List): List of bytes
+        bytes (int): n bytes to cut
+
+    Returns:
+        output (List):  List of bytes from start of binary to n bytes
+        binary (List):  Remaining elements in original binary list
+    """
+    output = binary[0:bytes]
+    binary = binary[bytes:]
+    return output, binary
 
 
 class IP_Header:
@@ -264,7 +281,6 @@ class packet:
         # self.orig_len = 0
 
     def get_bytes(self):
-        # self.incl_len - (SIZE_OF_ETHERNET_HEADER + IP.ip_header_len  +  TCP.data_offset)
         header_size = self.IP_header.ip_header_len + self.TCP_header.data_offset
         len_with_no_buffer = self.IP_header.total_len
         return len_with_no_buffer - header_size
@@ -281,7 +297,6 @@ class packet:
 
     def packet_data(self, binary, endian):
         # ethernet header
-        # ethernet_header, binary = getNextBytes(binary, SIZE_OF_ETHERNET_HEADER)
         binary = binary[SIZE_OF_ETHERNET_HEADER:]
 
         binary = self.IP_header.get_info(binary, endian)
@@ -407,7 +422,7 @@ class Connection_detail:
         self.source_port = 0  # done
         self.destination_port = 0  # int  # done
         self.status = [0, 0, 0]  # Sx, Fx, Rx
-        # (Only if the connection is complete provide the following information)
+        # Only if the connection is complete provide the following information
         self.start_time = 0  # int  # done
         self.end_time = 0  # int
         self.duration = 0  # int
@@ -425,77 +440,6 @@ class Connection_detail:
 
         Connection_detail.connection_num += 1
         self.connection_num = Connection_detail.connection_num
-
-    def __str__(self):
-        return str(self.__class__) + ": " + str(self.__dict__)
-
-    def print_partb(self):
-        # this will print out via format of part b
-        """Connection 47:
-            source address: 192.168.1.164
-            destination address: 132.170.108.140
-            source port: 1246
-            destination port: 80
-            status: S2F1
-            start time: 266.578746 seconds
-            end time: 282.552667 seconds
-            duration: 15.973921 seconds
-            number of packets sent from source to destination: 20
-            number of packets sent from destination to source: 29
-            total number of packets: 49
-            number of data bytes sent from source to destination: 1150
-            number of data bytes sent from destination to source: 34469
-            total number of data bytes: 35619
-        END
-        """
-        indent = "    "
-        print("Connection {}:".format(self.connection_num))
-        print(indent + "source address: {}".format(self.source_address))
-        print(indent + "destination address: {}".format(self.destination_address))
-        print(indent + "source port: {}".format(self.source_port))
-        print(indent + "destination port: {}".format(self.destination_port))
-
-        if self.status[2] != 0:
-            print(indent + "status: S{}F{}/R".format(self.status[0], self.status[1]))
-        else:
-            print(indent + "status: S{}F{}".format(self.status[0], self.status[1]))
-
-        if self.complete:
-            print(indent + "start time: {} seconds".format(self.start_time))
-            print(indent + "end time: {} seconds".format(self.end_time))
-            print(indent + "duration: {} seconds".format(self.duration))
-            print(
-                indent
-                + "number of packets sent from source to destination: {} packets".format(
-                    self.packets_src_to_dest
-                )
-            )
-            print(
-                indent
-                + "number of packets sent from destination to source: {} packets".format(
-                    self.packets_dest_to_src
-                )
-            )
-            print(
-                indent
-                + "total number of packets: {} packets".format(self.packets_total)
-            )
-            print(
-                indent
-                + "number of data bytes sent from source to destination: {} bytes".format(
-                    self.bytes_src_to_dest
-                )
-            )
-            print(
-                indent
-                + "number of data bytes sent from destination to source: {} bytes".format(
-                    self.bytes_dest_to_src
-                )
-            )
-            print(
-                indent + "total number of data bytes: {} bytes".format(self.bytes_total)
-            )
-        print("END")
 
     def get_info(self, connection_list):
         # given a list of packets in a connection get all the data needed
