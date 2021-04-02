@@ -1,7 +1,9 @@
 import struct
 
-SWAPPED_VALUE = 0xD4C3B2A1
-IDENTICAL_VALUE = 0xA1B2C3D4
+SWAPPED_VALUE_MS = 0xD4C3B2A1
+SWAPPED_VALUE_NS = 0x4D3CB2A1
+IDENTICAL_VALUE_MS = 0xA1B2C3D4
+IDENTICAL_VALUE_NS = 0xA1B23C4D
 
 
 class GlobalHeader:
@@ -23,6 +25,7 @@ class GlobalHeader:
         self.snaplen = 0
         self.network = 0
         self.endian = None
+        self.micro_sec = False
 
     def __str__(self):
         return str(self.__class__) + ": " + str(self.__dict__)
@@ -33,10 +36,18 @@ class GlobalHeader:
         self.magic_number = struct.unpack("<I", binary[0:4])[0]
 
         # Check for swapped or not
-        if self.magic_number == SWAPPED_VALUE:
+        if self.magic_number == SWAPPED_VALUE_MS:
             self.endian = ">"
-        elif self.magic_number == IDENTICAL_VALUE:
+            self.micro_sec = True
+        elif self.magic_number == IDENTICAL_VALUE_MS:
             self.endian = "<"
+            self.micro_sec = True
+        elif self.magic_number == SWAPPED_VALUE_NS:
+            self.endian = "<"
+            self.micro_sec = False
+        elif self.magic_number == IDENTICAL_VALUE_NS:
+            self.endian = "<"
+            self.micro_sec = False
         else:
             print("ERROR: magic number is not swapped or identical")
 

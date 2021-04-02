@@ -6,7 +6,7 @@ from tcp_header import TCPHeader
 SIZE_OF_ETHERNET_HEADER = 14
 
 
-class packet:
+class Packet:
 
     # pcap_hd_info = None
     IP_header = None
@@ -29,7 +29,7 @@ class packet:
         self.RTT_value = 0.0
         self.RTT_flag = False
         self.buffer = None
-        self.orig_time = packet.orig_time
+        self.orig_time = Packet.orig_time
         self.incl_len = 0
         # self.orig_len = 0
 
@@ -66,10 +66,10 @@ class packet:
         # print(self.timestamp,self.packet_No)
 
     def packet_No_set(self):
-        packet.packet_No += 1
-        self.packet_No = packet.packet_No
+        Packet.packet_No += 1
+        self.packet_No = Packet.packet_No
         if self.packet_No == 1:
-            packet.orig_time = self.timestamp
+            Packet.orig_time = self.timestamp
             self.orig_time = self.timestamp
             self.timestamp = 0
 

@@ -1,3 +1,6 @@
+import sys
+
+
 def get_next_bytes(binary, bytes):
     """
     This Function gets the next n bytes of data from a raw binary file and
@@ -14,3 +17,17 @@ def get_next_bytes(binary, bytes):
     output = binary[0:bytes]
     binary = binary[bytes:]
     return output, binary
+
+
+def importFile(file):
+    try:
+        with open(file, "rb") as f:
+            output = f.read()
+            f.close()
+            return output
+    except OSError:
+        print("An OSError was thrown in importFile")
+        sys.exit()
+    except Exception:
+        print("There was an error in importFile")
+        sys.exit()
