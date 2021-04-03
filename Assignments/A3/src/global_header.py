@@ -14,7 +14,7 @@ class GlobalHeader:
     sigfigs = 0  # 4 bytes
     snaplen = 0  # 4 bytes
     network = 0  # 4 bytes
-    endian = None
+    endian = ""
 
     def __init__(self):
         self.magic_number = 0
@@ -24,7 +24,7 @@ class GlobalHeader:
         self.sigfigs = 0
         self.snaplen = 0
         self.network = 0
-        self.endian = None
+        self.endian = ""
         self.micro_sec = False
 
     def __str__(self):

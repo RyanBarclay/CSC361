@@ -2,6 +2,8 @@ import struct
 
 from ip_header import IPHeader
 from tcp_header import TCPHeader
+from udp_header import UDPHeader
+
 
 SIZE_OF_ETHERNET_HEADER = 14
 
@@ -10,7 +12,8 @@ class Packet:
 
     # pcap_hd_info = None
     IP_header = None
-    TCP_header = None
+    inner_protocol = None
+    inner_protocol_type = None
     timestamp = 0
     packet_No = 0
     RTT_value = 0
@@ -22,8 +25,9 @@ class Packet:
 
     def __init__(self):
         self.IP_header = IPHeader()
-        self.TCP_header = TCPHeader()
+        self.inner_protocol = None
         # self.pcap_hd_info = pcap_ph_info()
+        self.inner_protocol_type = None
         self.timestamp = 0
         self.packet_No = 0
         self.RTT_value = 0.0
@@ -33,10 +37,10 @@ class Packet:
         self.incl_len = 0
         # self.orig_len = 0
 
-    def get_bytes(self):
-        header_size = self.IP_header.ip_header_len + self.TCP_header.data_offset
-        len_with_no_buffer = self.IP_header.total_len
-        return len_with_no_buffer - header_size
+    # def get_bytes(self):
+    #     header_size = self.IP_header.ip_header_len + self.TCP_header.data_offset
+    #     len_with_no_buffer = self.IP_header.total_len
+    #     return len_with_no_buffer - header_size
 
     def get_info(self, header_binary, endian):
         ts_sec = header_binary[0:4]
@@ -50,12 +54,32 @@ class Packet:
 
     def packet_data(self, binary, endian):
         # ethernet header
-        binary = binary[SIZE_OF_ETHERNET_HEADER:]
+        binary_after_e = binary[SIZE_OF_ETHERNET_HEADER:]
 
-        binary = self.IP_header.get_info(binary, endian)
-        # binary is remaining packet data minus the
+        # check to make sure we are using ip4 in the next part
 
-        binary = self.TCP_header.get_info(binary)
+        binary = self.IP_header.get_info(binary_after_e, endian)
+        if binary != binary_after_e:
+            # binary is remaining packet data minus the
+            # print(self.IP_header)
+            if self.IP_header.protocol == 1:
+                # ICMP
+                # print("ICMP")
+                self.inner_protocol_type = "ICMP"
+            elif self.IP_header.protocol == 17:
+                # UDP
+                self.inner_protocol = UDPHeader()
+                binary = self.inner_protocol.get_info(binary, endian)
+                inner_protocol_type = "UDP"
+                print(self.inner_protocol)
+            elif self.IP_header.protocol == 6:
+                # Ip4
+                self.inner_protocol = TCPHeader()
+                binary = self.inner_protocol.get_info(binary)
+        else:
+            # not a ip4 header so we will set up header and tcp header to None
+            self.IP_header = None
+            # self.TCP_header = None
 
         # ip_4 header
 
@@ -79,11 +103,11 @@ class Packet:
         rtt = p.timestamp - self.timestamp
         self.RTT_value = round(rtt, 8)
 
-    def get_unique_tuple(self):
-        return (
-            [self.IP_header.src_ip, self.TCP_header.src_port],
-            [self.IP_header.dst_ip, self.TCP_header.dst_port],
-        )
+    # def get_unique_tuple(self):
+    #     return (
+    #         [self.IP_header.src_ip, self.TCP_header.src_port],
+    #         [self.IP_header.dst_ip, self.TCP_header.dst_port],
+    #     )
 
     def __str__(self):
         return str(self.__class__) + ": " + str(self.__dict__)
