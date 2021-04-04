@@ -3,6 +3,7 @@ import struct
 from ip_header import IPHeader
 from tcp_header import TCPHeader
 from udp_header import UDPHeader
+from icmp_header import ICMPHeader
 
 
 SIZE_OF_ETHERNET_HEADER = 14
@@ -64,18 +65,36 @@ class Packet:
             # print(self.IP_header)
             if self.IP_header.protocol == 1:
                 # ICMP
-                # print("ICMP")
+                self.inner_protocol = ICMPHeader()
+                binary = self.inner_protocol.get_info(binary, endian)
                 self.inner_protocol_type = "ICMP"
+                # TODO: any logic that gets rid of redundant ICMP packets
+                # print("This is a ICMP")
+                # print(self.inner_protocol)
+                # print(self.inner_protocol.IP_header)
+                # print(self.inner_protocol.UDP_header)
             elif self.IP_header.protocol == 17:
                 # UDP
                 self.inner_protocol = UDPHeader()
                 binary = self.inner_protocol.get_info(binary, endian)
-                inner_protocol_type = "UDP"
-                print(self.inner_protocol)
+                # Now check to see if port is in range
+                if (self.inner_protocol.dst_port >= 33434) and (
+                    self.inner_protocol.dst_port <= 33625
+                ):
+                    self.inner_protocol_type = "UDP"
+                    # print("This is a valid UDP")
+                    # print("IP PROTOCOL:")
+                    # print(self.IP_header.protocol)
+
+                else:
+                    self.inner_protocol_type = None
+                # print(self.inner_protocol)
             elif self.IP_header.protocol == 6:
                 # Ip4
                 self.inner_protocol = TCPHeader()
                 binary = self.inner_protocol.get_info(binary)
+                self.inner_protocol_type = "IP"
+
         else:
             # not a ip4 header so we will set up header and tcp header to None
             self.IP_header = None

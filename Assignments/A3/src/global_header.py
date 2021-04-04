@@ -43,7 +43,7 @@ class GlobalHeader:
             self.endian = "<"
             self.micro_sec = True
         elif self.magic_number == SWAPPED_VALUE_NS:
-            self.endian = "<"
+            self.endian = ">"
             self.micro_sec = False
         elif self.magic_number == IDENTICAL_VALUE_NS:
             self.endian = "<"

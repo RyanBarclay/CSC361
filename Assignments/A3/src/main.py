@@ -25,8 +25,17 @@ def main():
         # open cap file
         binary = a3_functions.import_file(file)
 
-        relevant_packets = a3_functions.list_packets(binary)
-        print(len(relevant_packets))
+        packet_split = a3_functions.list_packets(binary)
+
+        if len(packet_split[0]) == 0:
+            # No UDP Packets
+            # Windows Trace route
+            print("Windows")
+        else:
+            # Linux Trace route
+            print("Linux")
+            a3_functions.handle_linux_case(packet_split)
+            # pass
         # Check if user wants to open another file
         if file is not cap_files[-1]:
             if not a3_functions.keep_going():

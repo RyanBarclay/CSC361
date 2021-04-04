@@ -65,7 +65,7 @@ class IPHeader:
 
     def get_identification(self, buffer, endian):
         # print(buffer)
-        self.identification = struct.unpack(">H", buffer)[0]
+        self.identification = struct.unpack("!H", buffer)[0]
 
     def get_flags(self, buffer):
         value = struct.unpack("B", buffer)[0]

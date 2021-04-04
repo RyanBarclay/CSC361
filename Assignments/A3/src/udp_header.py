@@ -30,13 +30,13 @@ class UDPHeader:
         return binary
 
     def get_src_port(self, buffer, endian):
-        self.src_port = struct.unpack(">H", buffer)[0]
+        self.src_port = struct.unpack("!H", buffer)[0]
 
     def get_dst_port(self, buffer, endian):
-        self.dst_port = struct.unpack(">H", buffer)[0]
+        self.dst_port = struct.unpack("!H", buffer)[0]
 
     def get_length(self, buffer, endian):
-        self.length = struct.unpack(">H", buffer)[0]
+        self.length = struct.unpack("!H", buffer)[0]
 
     def __str__(self):
         return str(self.__class__) + ": " + str(self.__dict__)
