@@ -15,6 +15,7 @@ class GlobalHeader:
     snaplen = 0  # 4 bytes
     network = 0  # 4 bytes
     endian = ""
+    micro_sec = None
 
     def __init__(self):
         self.magic_number = 0

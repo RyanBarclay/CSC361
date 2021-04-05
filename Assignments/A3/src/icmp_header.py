@@ -13,7 +13,7 @@ class ICMPHeader:
     code = None
     # checksum = None
     add_info_raw = None
-    inner_protools = None
+    inner_protocols = None
 
     # fill in inner protocols
 
@@ -22,7 +22,7 @@ class ICMPHeader:
         self.code = None
         # self.checksum = None
         self.add_info_raw = None
-        self.inner_protools = {}
+        self.inner_protocols = {}
 
     def __str__(self):
         return str(self.__class__) + ": " + str(self.__dict__)
@@ -41,18 +41,18 @@ class ICMPHeader:
         # Additional info raw
         self.add_info_raw = icmp_header[4:8]
 
-        if type in [11, 3]:
+        if self.type in [11, 3]:
             # ICMP that have IP under add info area
             # IP Header
             ip_head = IPHeader()
             binary = ip_head.get_info(binary, endian)
-            self.inner_protocol["IP4"] = ip_head
+            self.inner_protocols["IP4"] = ip_head
 
             if ip_head.protocol == 17:
                 # IP type is UDP so let's do that
                 udp_head = UDPHeader()
                 binary = udp_head.get_info(binary, endian)
-                self.inner_protools["UDP"] = udp_head
+                self.inner_protocols["UDP"] = udp_head
         return binary
 
     def get_type(self, buffer, endian):

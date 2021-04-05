@@ -1,5 +1,6 @@
 import sys
 import os
+import math
 
 from global_header import GlobalHeader
 from packet import Packet
@@ -96,7 +97,10 @@ def list_packets(binary):
 
         # Parse out remainder of packet
         remaining_packet, binary = get_next_bytes(
-            binary, packet_obj.get_info(packet_header, global_header_obj.endian)
+            binary,
+            packet_obj.get_info(
+                packet_header, global_header_obj.endian, global_header_obj.micro_sec
+            ),
         )
 
         # Parse packet data and format
@@ -117,22 +121,220 @@ def handle_linux_case(packet_split):
 
     # Deal with first packet
     first_packet = packet_split[0][0]
+
+    # Find src_ip
     src_node_ip = first_packet.IP_header.src_ip
+
+    # Find ult_dest_ip
     ult_dest_node_ip = first_packet.IP_header.dst_ip
 
     # Split into pairs
+    pairs = []
+    for udp_packet in packet_split[0]:
+        # for each udp packet we want to match it with a icmp packet
+        udp_src_port = udp_packet.inner_protocol.src_port
+
+        payload = []
+        for icmp_packet in packet_split[1]:
+            # find matching icmp packet
+            icmp_container = icmp_packet.inner_protocol
+
+            if "UDP" in icmp_container.inner_protocols:
+                icmp_err_src_port = icmp_container.inner_protocols["UDP"].src_port
+
+                if icmp_err_src_port == udp_src_port:
+                    # Match
+                    payload = [udp_packet, icmp_packet]
+                    break
+            else:
+                print("This ICMP does not have a UDP packet inside")
+                print(icmp_packet)
+                print("ICMP")
+                print(icmp_container)
+
+        if payload == []:
+            print("UDP packet could not find matching UDP")
+            print(udp_packet)
+        else:
+            pairs.append(payload)
 
     # Order by TTL
+    index_pairs = []
+    for pair in pairs:
+        ttl = ttl_in_pair_linux(pair)
+        index_pairs.append([ttl, pair])
 
-    # group by TTL?
-
-    # Find src_ip
-
-    # Find ult_dest_ip
+    sorted_index_pairs = sort_list(index_pairs)
 
     # Find all int_dest_ip
+    int_dest_ip = []  # element = [ttl, ip, [ [udp,icmp],[udp,icmp],[udp,icmp]... ] ]
+    ult_dest_ip = []
+    for element in sorted_index_pairs:
+        ttl = element[0]
+        icmp_packet = element[1][1]
+        router_ip = icmp_packet.IP_header.src_ip
+        if router_ip != ult_dest_node_ip:
+            # we have hit a router and want to store
+            payload = [ttl, router_ip, [element[1]]]
+            in_list = False
+            for i, existing_payload in enumerate(int_dest_ip):
+
+                if (
+                    payload[0] == existing_payload[0]
+                    and payload[1] == existing_payload[1]
+                ):
+                    # have same ttl and router ip
+
+                    # Add packet pair to pairs in list
+                    existing_pairs = existing_payload[2]
+                    existing_pairs.append(payload[2][0])
+
+                    # set up the new payload to be stored
+                    new_payload = [
+                        existing_payload[0],
+                        existing_payload[1],
+                        existing_pairs,
+                    ]
+
+                    # now override with the new payload
+                    int_dest_ip[i] = new_payload
+                    in_list = True
+                    break
+
+            if not in_list:
+                int_dest_ip.append(payload)
+        else:
+            # this pair is the between src and dest
+            payload = [ttl, router_ip, [element[1]]]
+            in_list = False
+            for i, existing_payload in enumerate(ult_dest_ip):
+
+                if payload[1] == existing_payload[1]:
+                    # have same ttl and router ip
+
+                    # Add packet pair to pairs in list
+                    existing_pairs = existing_payload[2]
+                    existing_pairs.append(payload[2][0])
+
+                    # set up the new payload to be stored
+                    new_payload = [
+                        existing_payload[0],
+                        existing_payload[1],
+                        existing_pairs,
+                    ]
+
+                    # now override with the new payload
+                    ult_dest_ip[i] = new_payload
+                    in_list = True
+                    break
+
+            if not in_list:
+                ult_dest_ip.append(payload)
 
     # Values in protocol fields
-    protocols = {"UDP": True, "ICMP": True}
+    # protocols = {"UDP": True, "ICMP": True}
+
+    # Print out the stuff
+    print("The IP address of the source node: {}".format(src_node_ip))
+    print("The IP address of ultimate destination node: {}".format(ult_dest_node_ip))
+    print("The IP addresses of the intermediate destination nodes:")
+    for router_num, unique_pair in enumerate(int_dest_ip):
+        print(
+            "    router {}: {}, distance to source: {}".format(
+                router_num + 1, unique_pair[1], unique_pair[0]
+            )
+        )
+    print("\nThe values in the protocol field of IP headers:")
+    print("    1: ICMP")
+    print("    17: UDP")
+    print(
+        "\nThe number of fragments created from the original datagram is: {}".format(
+            None
+        )
+    )
+    print("The offset of the last fragment is: {}".format(None))
+    print("")
+    for unique_pair in int_dest_ip:
+        # list of pairs per unique ttl and ip
+        rtt_list = []
+        for pair in unique_pair[2]:
+            # calc rtt stuff in here
+            rtt = (pair[1].timestamp - pair[0].timestamp) * 1000000
+            rtt_list.append(rtt)
+
+        mean = get_mean(rtt_list)
+        std = get_std(rtt_list)
+
+        print(
+            "The avg RTT between {} and {} is: {} ms, the s.d. is: {} ms ".format(
+                src_node_ip, unique_pair[1], mean, std
+            )
+        )
+    for unique_pair in ult_dest_ip:
+        # list of pairs per unique ttl and ip
+        rtt_list = []
+        for pair in unique_pair[2]:
+            # calc rtt stuff in here
+            rtt = (pair[1].timestamp - pair[0].timestamp) * 1000000
+            rtt_list.append(rtt)
+
+        mean = get_mean(rtt_list)
+        std = get_std(rtt_list)
+
+        print(
+            "The avg RTT between {} and {} is: {} ms, the s.d. is: {} ms ".format(
+                src_node_ip, unique_pair[1], mean, std
+            )
+        )
 
     return
+
+
+def ttl_in_pair_linux(pair):
+    return pair[0].IP_header.ttl
+
+
+def sort_list(pairs_with_ttl):
+    n = len(pairs_with_ttl)
+
+    # sorting algorithm from https://www.geeksforgeeks.org/bubble-sort/
+    # TODO: Optimize
+
+    # Traverse through all array elements
+    for i in range(n):
+        # Last i elements are already in place
+        for j in range(0, n - i - 1):
+
+            # traverse the array from 0 to n-i-1
+            # Swap the pair if the ttl of pair found is greater
+            # than the next pairs ttl
+            if pairs_with_ttl[j][0] > pairs_with_ttl[j + 1][0]:
+
+                pairs_with_ttl[j], pairs_with_ttl[j + 1] = (
+                    pairs_with_ttl[j + 1],
+                    pairs_with_ttl[j],
+                )
+    return pairs_with_ttl
+
+
+def get_std(list_of_values):
+    # work out mean
+    mean = get_mean(list_of_values)
+
+    squared_list = []
+    # for each number subtract mean and square the value
+    for number in list_of_values:
+        squared_list.append(math.pow(number - mean, 2))
+
+    # find mean on those diffs
+    mean = get_mean(squared_list)
+
+    # do square rt on that
+    return math.sqrt(mean)
+
+
+def get_mean(list_of_values):
+    sum = 0
+    for value in list_of_values:
+        sum += value
+    return sum / len(list_of_values)

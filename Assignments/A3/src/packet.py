@@ -43,12 +43,12 @@ class Packet:
     #     len_with_no_buffer = self.IP_header.total_len
     #     return len_with_no_buffer - header_size
 
-    def get_info(self, header_binary, endian):
+    def get_info(self, header_binary, endian, micro_sec):
         ts_sec = header_binary[0:4]
         ts_usec = header_binary[4:8]
         incl_len = struct.unpack(endian + "I", header_binary[8:12])[0]
         # orig_len = struct.unpack(endian + "I", header_binary[12:])[0]
-        self.timestamp_set(ts_sec, ts_usec, self.orig_time)
+        self.timestamp_set(ts_sec, ts_usec, self.orig_time, micro_sec)
         self.packet_No_set()
         self.incl_len = incl_len
         return incl_len
@@ -102,10 +102,19 @@ class Packet:
 
         # ip_4 header
 
-    def timestamp_set(self, buffer1, buffer2, orig_time):
+    def timestamp_set(self, buffer1, buffer2, orig_time, micro):
         seconds = struct.unpack("I", buffer1)[0]
-        microseconds = struct.unpack("<I", buffer2)[0]
-        self.timestamp = round(seconds + microseconds * 0.000001 - orig_time, 6)
+        if micro:
+            microseconds = struct.unpack("<I", buffer2)[0]
+            nanoseconds = 0
+        else:
+            microseconds = 0
+            nanoseconds = struct.unpack("<I", buffer2)[0]
+        self.timestamp = round(
+            (seconds + (microseconds * 0.000001) + (nanoseconds * 0.000000001))
+            - orig_time,
+            6,
+        )
         # print(self.timestamp,self.packet_No)
 
     def packet_No_set(self):
