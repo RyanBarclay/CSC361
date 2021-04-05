@@ -23,6 +23,8 @@ class Packet:
     orig_time = 0
     incl_len = 0
     orig_len = 0
+    fragmented = None
+    last_frag_offset = None
 
     def __init__(self):
         self.IP_header = IPHeader()
@@ -36,7 +38,8 @@ class Packet:
         self.buffer = None
         self.orig_time = Packet.orig_time
         self.incl_len = 0
-        # self.orig_len = 0
+        self.fragmented = False
+        self.last_frag_offset = None
 
     # def get_bytes(self):
     #     header_size = self.IP_header.ip_header_len + self.TCP_header.data_offset
@@ -60,35 +63,77 @@ class Packet:
         # check to make sure we are using ip4 in the next part
 
         binary = self.IP_header.get_info(binary_after_e, endian)
+
         if binary != binary_after_e:
             # binary is remaining packet data minus the
             # print(self.IP_header)
+
             if self.IP_header.protocol == 1:
                 # ICMP
                 self.inner_protocol = ICMPHeader()
-                binary = self.inner_protocol.get_info(binary, endian)
-                self.inner_protocol_type = "ICMP"
-                # TODO: any logic that gets rid of redundant ICMP packets
-                # print("This is a ICMP")
-                # print(self.inner_protocol)
-                # print(self.inner_protocol.IP_header)
-                # print(self.inner_protocol.UDP_header)
+
+                # Look to see fragmented or not
+                if self.IP_header.flags["mf"]:
+
+                    self.fragmented = True
+                    self.inner_protocol_type = "ICMP"
+                else:
+                    binary = self.inner_protocol.get_info(binary, endian)
+                    self.last_frag_offset = self.IP_header.fragment_offset
+                    # TODO: any logic that gets rid of redundant ICMP packets
+                    if self.inner_protocol.type in [
+                        11,
+                        3,
+                        8,
+                        0,
+                        13,
+                        14,
+                        3,
+                        5,
+                        12,
+                        10,
+                    ]:
+                        self.inner_protocol_type = "ICMP"
+                    else:
+                        self.inner_protocol_type = None
+                    # print("This is a ICMP")
+                    # print(self.inner_protocol)
+                    # print(self.inner_protocol.IP_header)
+                    # print(self.inner_protocol.UDP_header)
+
             elif self.IP_header.protocol == 17:
                 # UDP
                 self.inner_protocol = UDPHeader()
-                binary = self.inner_protocol.get_info(binary, endian)
-                # Now check to see if port is in range
-                if (self.inner_protocol.dst_port >= 33434) and (
-                    self.inner_protocol.dst_port <= 33625
-                ):
+                # Look to see fragmented or not
+                if self.IP_header.flags["mf"]:
+                    self.fragmented = True
                     self.inner_protocol_type = "UDP"
-                    # print("This is a valid UDP")
-                    # print("IP PROTOCOL:")
-                    # print(self.IP_header.protocol)
-
                 else:
-                    self.inner_protocol_type = None
-                # print(self.inner_protocol)
+                    # if self.packet_No == 22:
+                    #     print(self)
+                    #     print(self.IP_header)
+                    #     print(binary)
+                    #     print(self.inner_protocol)
+                    binary = self.inner_protocol.get_info(binary, endian)
+                    # Now check to see if port is in range
+                    # if self.packet_No == 22:
+                    #     print(self)
+                    #     print(self.IP_header)
+                    #     print(self.inner_protocol)
+
+                    if (self.inner_protocol.dst_port >= 33434) and (
+                        self.inner_protocol.dst_port <= 33625
+                    ):
+
+                        self.inner_protocol_type = "UDP"
+                        self.last_frag_offset = self.IP_header.fragment_offset
+                        # print("This is a valid UDP")
+                        # print("IP PROTOCOL:")
+                        # print(self.IP_header.protocol)
+
+                    else:
+                        self.inner_protocol_type = None
+                    # print(self.inner_protocol)
             elif self.IP_header.protocol == 6:
                 # Ip4
                 self.inner_protocol = TCPHeader()

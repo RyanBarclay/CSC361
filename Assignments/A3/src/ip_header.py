@@ -49,7 +49,7 @@ class IPHeader:
         self.get_flags(ip4_header[6:7])
 
         # Fragment Offset
-        self.get_fragment_offset(ip4_header[6:8])
+        self.get_fragment_offset(ip4_header[6:7], ip4_header[7:8])
 
         # Time To Live
         self.get_ttl(ip4_header[8:9])
@@ -76,9 +76,16 @@ class IPHeader:
         self.flags["df"] = df
         self.flags["mf"] = mf
 
-    def get_fragment_offset(self, buffer):
-        value = struct.unpack("BB", buffer)[0]
-        self.fragment_offset = value & 0b0001111111111111
+    def get_fragment_offset(self, buffer1, buffer2):
+        value1 = struct.unpack("B", buffer1)[0]
+        value2 = struct.unpack("B", buffer2)[0]
+        value2 = value2 << 3
+        value1 = value1 & 0b00011111
+        value = value1 | value2
+        self.fragment_offset = value
+        # 10111001000
+        # 1011100100000
+        # 000000001011001
 
     def get_ttl(self, buffer):
         self.ttl = struct.unpack("B", buffer)[0]

@@ -90,6 +90,7 @@ def list_packets(binary):
     global_header_obj.get_global_header_into(global_header_binary)
     # print(global_header_obj.endian)
 
+    # we are going to go through the doc in in the format of [packet]
     while binary:
         # set up packet header, will also get the size of packet
         packet_header, binary = get_next_bytes(binary, SIZE_OF_PACKET_HEADER)
@@ -103,8 +104,10 @@ def list_packets(binary):
             ),
         )
 
-        # Parse packet data and format
-        # Will only store UDP packets we care about and ICMP packets
+        # Parse packet data and format.
+        # Will only store UDP packets we care about and ICMP packets.
+        # All fragment packets will be set with a fragmented flag in the packet but
+        # will store the type.
         packet_obj.packet_data(remaining_packet, global_header_obj.endian)
 
         # Add complete packet to list
@@ -112,9 +115,48 @@ def list_packets(binary):
             icmp_list.append(packet_obj)
         elif packet_obj.inner_protocol_type == "UDP":
             udp_list.append(packet_obj)
+
+    for packet in udp_list:
+        # lets match the flagged packet
+        if packet.fragmented:
+            # We have found a flagged packet now lets match it with the end of fragment
+            for other_packet in udp_list:
+                if (
+                    packet.IP_header.identification
+                    == other_packet.IP_header.identification
+                ):
+                    # print(other_packet)
+                    # print(other_packet.IP_header)
+                    if other_packet.fragmented is False:
+                        # this is the "Root" of this fragmentation
+                        # time to grab the important stuff
+                        packet.inner_protocol.src_port = (
+                            other_packet.inner_protocol.src_port
+                        )
+                        packet.inner_protocol.dst_port = (
+                            other_packet.inner_protocol.dst_port
+                        )
+    # TODO? make one for fragments for icmp
     packets.append(udp_list)
     packets.append(icmp_list)
     return packets
+
+
+def handle_windows_case(packet_split):
+    pass
+    # Deal with first packet
+    first_packet = packet_split[1][0]
+
+    # Find src_ip
+    src_node_ip = first_packet.IP_header.src_ip
+
+    # Find ult_dest_ip
+    ult_dest_node_ip = first_packet.IP_header.dst_ip
+
+    # match senders with reicevers
+    pairs = []
+    for icmp_packet in packet_split[1]:
+        pass
 
 
 def handle_linux_case(packet_split):
@@ -127,6 +169,9 @@ def handle_linux_case(packet_split):
 
     # Find ult_dest_ip
     ult_dest_node_ip = first_packet.IP_header.dst_ip
+
+    # Find number of fragments of first packet
+    # TODO
 
     # Split into pairs
     pairs = []
@@ -153,8 +198,11 @@ def handle_linux_case(packet_split):
                 print(icmp_container)
 
         if payload == []:
-            print("UDP packet could not find matching UDP")
-            print(udp_packet)
+            # print("UDP packet could not find matching UDP")
+            # print(udp_packet)
+            # print(udp_packet.inner_protocol)
+            # print(udp_packet.IP_header)
+            pass
         else:
             pairs.append(payload)
 
@@ -248,18 +296,16 @@ def handle_linux_case(packet_split):
     print("    1: ICMP")
     print("    17: UDP")
     print(
-        "\nThe number of fragments created from the original datagram is: {}".format(
-            None
-        )
+        "\nThe number of fragments created from the original datagram is: {}".format(0)
     )
-    print("The offset of the last fragment is: {}".format(None))
+    print("The offset of the last fragment is: {}".format(0))
     print("")
     for unique_pair in int_dest_ip:
         # list of pairs per unique ttl and ip
         rtt_list = []
         for pair in unique_pair[2]:
             # calc rtt stuff in here
-            rtt = (pair[1].timestamp - pair[0].timestamp) * 1000000
+            rtt = (pair[1].timestamp - pair[0].timestamp) * 1000
             rtt_list.append(rtt)
 
         mean = get_mean(rtt_list)
@@ -275,7 +321,7 @@ def handle_linux_case(packet_split):
         rtt_list = []
         for pair in unique_pair[2]:
             # calc rtt stuff in here
-            rtt = (pair[1].timestamp - pair[0].timestamp) * 1000000
+            rtt = pair[1].timestamp - pair[0].timestamp
             rtt_list.append(rtt)
 
         mean = get_mean(rtt_list)

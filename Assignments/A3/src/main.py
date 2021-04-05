@@ -11,6 +11,8 @@ import sys
 
 import a3_functions
 
+from packet import Packet
+
 
 def main():
 
@@ -31,6 +33,7 @@ def main():
             # No UDP Packets
             # Windows Trace route
             print("Windows")
+            a3_functions.handle_windows_case(packet_split)
         else:
             # Linux Trace route
             print("Linux")
@@ -40,6 +43,21 @@ def main():
         if file is not cap_files[-1]:
             if not a3_functions.keep_going():
                 break
+            else:
+                # reset packets
+                Packet.IP_header = None
+                Packet.inner_protocol = None
+                Packet.inner_protocol_type = None
+                Packet.timestamp = 0
+                Packet.packet_No = 0
+                Packet.RTT_value = 0
+                Packet.RTT_flag = False
+                Packet.buffer = None
+                Packet.orig_time = 0
+                Packet.incl_len = 0
+                Packet.orig_len = 0
+                Packet.fragmented = None
+                Packet.last_frag_offset = None
 
 
 if __name__ == "__main__":
